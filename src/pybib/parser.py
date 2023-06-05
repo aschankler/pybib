@@ -65,7 +65,7 @@ def _split_block(lines: Iterable[str]) -> tuple[str, list[str]]:
     return blk_type, contents
 
 
-@attrs.frozen(order=False)
+@attrs.define(order=False)
 class EntryBlock(BibtexBlock):
     entry_type: str
     entry_key: str
@@ -110,7 +110,7 @@ class EntryBlock(BibtexBlock):
         return cls(kind, entry_key, fields_dict)
 
 
-@attrs.frozen(order=False)
+@attrs.define(order=False)
 class ExplicitCommentBlock(BibtexBlock):
     lines: Sequence[str]
 
@@ -127,7 +127,7 @@ class ExplicitCommentBlock(BibtexBlock):
         return cls(contents)
 
 
-@attrs.frozen(order=False)
+@attrs.define(order=False)
 class ImplicitCommentBlock(BibtexBlock):
     lines: Sequence[str]
 
@@ -139,7 +139,7 @@ class ImplicitCommentBlock(BibtexBlock):
         return cls([ln.strip() for ln in lines])
 
 
-@attrs.frozen(order=False)
+@attrs.define(order=False)
 class PreambleBlock(BibtexBlock):
     lines: Sequence[str]
 
@@ -156,7 +156,7 @@ class PreambleBlock(BibtexBlock):
         return cls(contents)
 
 
-@attrs.frozen(order=False)
+@attrs.define(order=False)
 class BadBlock(BibtexBlock):
     lines: Sequence[str]
 
@@ -168,7 +168,7 @@ class BadBlock(BibtexBlock):
         return cls(list(lines))
 
 
-@attrs.frozen(order=False)
+@attrs.define(order=False)
 class StringBlock(BibtexBlock):
     lines: Sequence[str]
 
