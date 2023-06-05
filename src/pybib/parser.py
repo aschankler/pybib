@@ -94,6 +94,7 @@ class EntryBlock(BibtexBlock):
             if paren_count == 0 and char == ",":
                 parts.append(entry_str[last_split:i].strip())
                 last_split = i + 1
+        parts.append(entry_str[last_split:])
         return parts
 
     @staticmethod
@@ -285,7 +286,13 @@ def parse_lines(lines: Iterable[str]) -> list[BibtexBlock]:
             return StringBlock
         return EntryBlock
 
-    return [_get_block_type(blk).from_lines(blk) for blk in _split_blocks(lines)]
+    def _parse_block(block_lines: Sequence[str]) -> BibtexBlock:
+        try:
+            return _get_block_type(block_lines).from_lines(block_lines)
+        except (AssertionError, ValueError):
+            return BadBlock.from_lines(block_lines)
+
+    return [_parse_block(blk) for blk in _split_blocks(lines)]
 
 
 def parse_string(bibtex_str: str) -> list[BibtexBlock]:
@@ -302,6 +309,7 @@ def parse_file(bibtex_file: Path) -> list[BibtexBlock]:
 def gen_lines(blocks: Iterable[BibtexBlock]) -> Iterator[str]:
     for block in blocks:
         yield from block.render()
+        yield "\n"
 
 
 def write_string(blocks: Iterable[BibtexBlock]) -> str:
