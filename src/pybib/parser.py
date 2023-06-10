@@ -21,7 +21,7 @@ class BibtexBlock(ABC):
         raise NotImplementedError
 
 
-def _split_block(lines: Iterable[str]) -> tuple[str, list[str]]:
+def unwrap_block(lines: Iterable[str]) -> tuple[str, list[str]]:
     lines_iter = iter(lines)
     first_line = next(lines_iter).lstrip()
     assert first_line[0] == "@"
@@ -105,7 +105,7 @@ class EntryBlock(BibtexBlock):
 
     @classmethod
     def from_lines(cls, lines: Iterable[str]) -> Self:
-        kind, contents = _split_block(lines)
+        kind, contents = unwrap_block(lines)
         entry_key, *fields = cls.split_entry_parts(contents)
         fields_dict = dict(map(cls.split_field, fields))
         return cls(kind, entry_key, fields_dict)
@@ -123,7 +123,7 @@ class ExplicitCommentBlock(BibtexBlock):
 
     @classmethod
     def from_lines(cls, lines: Iterable[str]) -> Self:
-        kind, contents = _split_block(lines)
+        kind, contents = unwrap_block(lines)
         assert kind.lower() == "comment"
         return cls(contents)
 
@@ -152,7 +152,7 @@ class PreambleBlock(BibtexBlock):
 
     @classmethod
     def from_lines(cls, lines: Iterable[str]) -> Self:
-        kind, contents = _split_block(lines)
+        kind, contents = unwrap_block(lines)
         assert kind.lower() == "preamble"
         return cls(contents)
 
@@ -181,7 +181,7 @@ class StringBlock(BibtexBlock):
 
     @classmethod
     def from_lines(cls, lines: Iterable[str]) -> Self:
-        kind, contents = _split_block(lines)
+        kind, contents = unwrap_block(lines)
         assert kind.lower() == "string"
         return cls(contents)
 
@@ -263,32 +263,33 @@ def _split_blocks(lines: Iterable[str]) -> Iterator[tuple[str]]:
             raise RuntimeError
 
 
+def get_block_type(block_lines: Sequence[str]) -> type[BibtexBlock]:
+    if "@" not in block_lines[0]:
+        return ImplicitCommentBlock
+    tokens = block_lines[0].split()
+    if tokens[0] == "@":
+        return BadBlock
+    blk_type = tokens[0][1:]
+    i_open = len(blk_type) if "{" not in blk_type else blk_type.index("{")
+    i_close = len(blk_type) if "}" not in blk_type else blk_type.index("}")
+    if i_open > i_close:
+        return BadBlock
+    blk_type = blk_type[:i_open].lower()
+    if blk_type == "comment":
+        return ExplicitCommentBlock
+    if blk_type == "preamble":
+        return PreambleBlock
+    if blk_type == "string":
+        return StringBlock
+    return EntryBlock
+
+
 def parse_lines(lines: Iterable[str]) -> list[BibtexBlock]:
     """Parse lines from a BibTex file into block objects."""
 
-    def _get_block_type(block_lines: Sequence[str]) -> type[BibtexBlock]:
-        if "@" not in block_lines[0]:
-            return ImplicitCommentBlock
-        tokens = block_lines[0].split()
-        if tokens[0] == "@":
-            return BadBlock
-        blk_type = tokens[0][1:]
-        i_open = len(blk_type) if "{" not in blk_type else blk_type.index("{")
-        i_close = len(blk_type) if "}" not in blk_type else blk_type.index("}")
-        if i_open > i_close:
-            return BadBlock
-        blk_type = blk_type[:i_open].lower()
-        if blk_type == "comment":
-            return ExplicitCommentBlock
-        if blk_type == "preamble":
-            return PreambleBlock
-        if blk_type == "string":
-            return StringBlock
-        return EntryBlock
-
     def _parse_block(block_lines: Sequence[str]) -> BibtexBlock:
         try:
-            return _get_block_type(block_lines).from_lines(block_lines)
+            return get_block_type(block_lines).from_lines(block_lines)
         except (AssertionError, ValueError):
             return BadBlock.from_lines(block_lines)
 
