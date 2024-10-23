@@ -9,6 +9,8 @@ attrs = "*"
 [dev-packages]
 isort = "*"
 black = "*"
+flake8 = "*"
+ipython = "*"
 
 [requires]
 python_version = "3.11"
