@@ -10,8 +10,7 @@ from pybib.parser import (
     BadBlock,
     BibtexBlock,
     EntryBlock,
-    ExplicitCommentBlock,
-    ImplicitCommentBlock,
+    CommentBlock,
     PreambleBlock,
     StringBlock,
 )
@@ -21,10 +20,13 @@ from pybib.parser import (
 
 # Block transforms:
 # validators
+# compress spaces in entries
+# Reformat
 
 # Library transforms:
 # dereference strings
 # exclude comments
+# merge whitespace into surrounding blocks
 
 
 # noinspection PyMethodMayBeStatic
@@ -41,10 +43,8 @@ class BlockTransform(ABC):
 
         if isinstance(block, EntryBlock):
             return self.transform_entry(block)
-        if isinstance(block, ExplicitCommentBlock):
-            return self.transform_explicit_comment(block)
-        if isinstance(block, ImplicitCommentBlock):
-            return self.transform_implicit_comment(block)
+        if isinstance(block, CommentBlock):
+            return self.transform_comment(block)
         if isinstance(block, StringBlock):
             return self.transform_string(block)
         if isinstance(block, PreambleBlock):
@@ -65,10 +65,7 @@ class BlockTransform(ABC):
     def transform_preamble(self, block: PreambleBlock) -> BibtexBlock:
         return block
 
-    def transform_explicit_comment(self, block: ExplicitCommentBlock) -> BibtexBlock:
-        return block
-
-    def transform_implicit_comment(self, block: ImplicitCommentBlock) -> BibtexBlock:
+    def transform_comment(self, block: CommentBlock) -> BibtexBlock:
         return block
 
     def transform_bad_block(self, block: BadBlock) -> BibtexBlock:
@@ -130,23 +127,3 @@ class StripFields(BlockTransform):
             if f_key.lower() not in self.exclude_fields
         }
         return block
-
-
-@attrs.frozen(eq=False)
-class TrailingComma(BlockTransform):
-    def transform_bad_block(self, block: BadBlock) -> BibtexBlock:
-        from pybib.parser import get_block_type, unwrap_block
-
-        try:
-            if get_block_type(block.lines) is not EntryBlock:
-                return block
-            blk_type, contents = unwrap_block(block.lines)
-            entry_key, *fields = EntryBlock.split_entry_parts(contents)
-            if fields[-1] != "":
-                # Not a trailing comma problem
-                return block
-            fields = fields[:-1]
-            fields_dict = dict(map(EntryBlock.split_field, fields))
-            return EntryBlock(blk_type, entry_key, fields_dict)
-        except (ValueError, AssertionError):
-            return block
